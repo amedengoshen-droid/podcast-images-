@@ -2,165 +2,289 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Podcast Image Resizer and Cloudinary Uploader</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#172554">
+<title>Image Resizer & Cloudinary Uploader</title>
 <style>
-  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-  body { max-width: 42rem; margin: 0 auto; padding: 1rem; line-height: 1.5; }
-  h1 { font-size: 1.5rem; }
-  label { display: block; margin: 1rem 0 .35rem; font-weight: 650; }
-  input, select, button { font: inherit; }
-  input[type=file], select, button { width: 100%; box-sizing: border-box; padding: .8rem; margin: .25rem 0; }
-  button { cursor: pointer; }
-  button:disabled { opacity: .55; cursor: wait; }
-  .hint { font-size: .95rem; }
-  .status { margin: 1rem 0; padding: .75rem; border: 1px solid currentColor; border-radius: .5rem; }
-  .result { margin: 1rem 0; padding: .75rem; border: 1px solid currentColor; border-radius: .5rem; overflow-wrap: anywhere; }
-  .result a { display: block; margin: .5rem 0; }
-  .copy { margin-top: .5rem; }
-  #results[hidden] { display: none; }
+:root{color-scheme:light;--ink:#172033;--muted:#596579;--line:#d9e0ea;--bg:#f4f6fa;--panel:#fff;--blue:#1d4ed8;--blue2:#1e40af;--soft:#eaf0ff;--good:#166534;--bad:#991b1b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:760px;margin:0 auto;padding:18px 14px 42px}
+h1{font-size:1.55rem;line-height:1.2;margin:4px 0 6px}
+h2{font-size:1.12rem;margin:0 0 12px}
+p{margin:5px 0 12px}
+.sub{color:var(--muted);font-size:.94rem}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin:14px 0}
+label{display:block;font-weight:650;margin:10px 0 5px}
+input,select,button{font:inherit}
+input[type=text],input[type=number],select{width:100%;min-height:46px;border:1px solid #aeb9c9;border-radius:10px;padding:9px 11px;background:white;color:var(--ink)}
+input[type=file]{width:100%;padding:12px 0}
+button{border:0;border-radius:11px;padding:12px 15px;min-height:46px;font-weight:700;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+.primary{background:var(--blue);color:white;width:100%;margin-top:14px}
+.primary:active{background:var(--blue2)}
+.secondary{background:var(--soft);color:#173b91}
+.danger{background:#fff0f0;color:var(--bad)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.preset-row{display:flex;gap:8px;align-items:center;margin:8px 0}
+.preset-row select{flex:1}
+.preset-row button{white-space:nowrap}
+.choice{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--line);border-radius:10px;margin:8px 0}
+.choice input{margin-top:5px}
+.choice label{margin:0;font-weight:550}
+.hidden{display:none!important}
+.note{background:#f0f5ff;border-radius:10px;padding:10px 12px;color:#263b63;font-size:.9rem}
+.status{padding:12px;border-radius:10px;margin-top:12px;overflow-wrap:anywhere}
+.status.ok{background:#eaf7ee;color:var(--good)}
+.status.err{background:#fff0f0;color:var(--bad)}
+.status.info{background:#eef3fb;color:#253858}
+.preview{display:block;max-width:100%;max-height:240px;margin:10px auto;border-radius:8px}
+.linkbox{display:block;overflow-wrap:anywhere;background:#f5f7fb;padding:10px;border-radius:8px;margin:8px 0}
+.small{font-size:.85rem;color:var(--muted)}
+hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+@media(max-width:420px){.row{grid-template-columns:1fr 1fr}.card{padding:14px}}
 </style>
 </head>
 <body>
-<h1>Podcast Image Resizer and Uploader</h1>
-<p>Select your designer's image. This page makes a 1200 × 630 image and a 3000 × 3000 image, then uploads both to your Cloudinary account.</p>
+<main>
+  <h1>Image Resizer</h1>
+  <p class="sub">Resize images on your phone. Download them, or upload them to Cloudinary and get the direct image link.</p>
 
-<label for="imageFile">Choose an image</label>
-<input id="imageFile" type="file" accept="image/*">
+  <section class="card" aria-labelledby="imageHeading">
+    <h2 id="imageHeading">1. Choose an image</h2>
+    <input id="fileInput" type="file" accept="image/*">
+    <div id="fileInfo" class="small" aria-live="polite">No image selected yet.</div>
+    <img id="preview" class="preview hidden" alt="Preview of the selected image">
+  </section>
 
-<label for="fitMode">When the image proportions do not match</label>
-<select id="fitMode">
-  <option value="contain">Keep the whole image (add white space if needed)</option>
-  <option value="cover">Fill the size (crop edges if needed)</option>
-</select>
-<p class="hint">The page does not stretch or distort your image. Choose whether to keep the whole image or crop the edges.</p>
+  <section class="card" aria-labelledby="presetHeading">
+    <h2 id="presetHeading">2. Choose dimensions</h2>
+    <label for="presetSelect">Saved presets</label>
+    <div class="preset-row">
+      <select id="presetSelect" aria-label="Choose a saved preset"></select>
+      <button type="button" class="secondary" id="managePresets">Manage</button>
+    </div>
+    <div class="row">
+      <div><label for="widthInput">Width (pixels)</label><input id="widthInput" type="number" min="1" max="12000" value="1200" inputmode="numeric"></div>
+      <div><label for="heightInput">Height (pixels)</label><input id="heightInput" type="number" min="1" max="12000" value="630" inputmode="numeric"></div>
+    </div>
+    <label for="fitMode">How should the image fit?</label>
+    <select id="fitMode">
+      <option value="cover">Crop to fill exact dimensions</option>
+      <option value="contain">Fit whole image (may leave blank space)</option>
+      <option value="stretch">Stretch to exact dimensions</option>
+    </select>
+    <p class="small">Crop to fill is usually best for cover artwork. Fit whole image avoids cutting anything off.</p>
+  </section>
 
-<button id="goButton" type="button">Create both sizes and upload</button>
-<div id="status" class="status" role="status" aria-live="polite">Choose an image to begin.</div>
-<section id="results" hidden aria-label="Uploaded image links">
-  <h2>Upload results</h2>
-  <div id="resultWide" class="result"></div>
-  <div id="resultSquare" class="result"></div>
-</section>
+  <section class="card" aria-labelledby="actionHeading">
+    <h2 id="actionHeading">3. Choose what happens after resizing</h2>
+    <div class="choice">
+      <input type="radio" name="action" id="actionDownload" value="download" checked>
+      <label for="actionDownload"><strong>Resize only</strong><br><span class="small">Download the resized image. No Cloudinary upload or link.</span></label>
+    </div>
+    <div class="choice">
+      <input type="radio" name="action" id="actionUpload" value="upload">
+      <label for="actionUpload"><strong>Resize and upload</strong><br><span class="small">Upload to Cloudinary and return its direct image delivery URL.</span></label>
+    </div>
+    <button type="button" class="primary" id="processButton">Resize image</button>
+    <div id="status" class="hidden" role="status" aria-live="polite"></div>
+    <div id="result" class="hidden"></div>
+  </section>
 
+  <section class="card" id="settingsCard" aria-labelledby="settingsHeading">
+    <h2 id="settingsHeading">Cloudinary settings</h2>
+    <p class="small">Only needed when you choose “Resize and upload”. These settings are saved on this device. Never enter your Cloudinary API secret here.</p>
+    <label for="cloudName">Cloud name</label>
+    <input id="cloudName" type="text" value="dsgy5389i" autocomplete="off">
+    <label for="uploadPreset">Unsigned upload preset name</label>
+    <input id="uploadPreset" type="text" value="Podcast images" autocomplete="off">
+    <button type="button" class="secondary" id="saveSettings">Save Cloudinary settings</button>
+    <p class="small">The preset name must match Cloudinary exactly, including capital letters, spaces and hyphens. Its signing mode must be Unsigned.</p>
+  </section>
+
+  <section class="card hidden" id="manageCard" aria-labelledby="manageHeading">
+    <h2 id="manageHeading">Manage your presets</h2>
+    <p class="small">Create a named size once, then select it whenever you need it. You can still choose download or upload each time.</p>
+    <label for="presetName">Preset name</label>
+    <input id="presetName" type="text" placeholder="For example, Newsletter banner">
+    <div class="row">
+      <div><label for="newWidth">Width</label><input id="newWidth" type="number" min="1" max="12000" value="1200" inputmode="numeric"></div>
+      <div><label for="newHeight">Height</label><input id="newHeight" type="number" min="1" max="12000" value="630" inputmode="numeric"></div>
+    </div>
+    <button type="button" class="primary" id="savePreset">Save preset</button>
+    <div id="presetList"></div>
+    <button type="button" class="secondary" id="closeManage">Close preset manager</button>
+  </section>
+
+  <p class="small">Image resizing happens in your browser on your device. When you upload, the image is sent to Cloudinary using your unsigned preset. Your Cloudinary password and API secret are not used.</p>
+</main>
 <script>
-(() => {
-  'use strict';
-  const CLOUD_NAME = 'dsgy5389i';
-  const UPLOAD_PRESET = 'podcast-images';
-  const fileInput = document.getElementById('imageFile');
-  const fitMode = document.getElementById('fitMode');
-  const button = document.getElementById('goButton');
-  const status = document.getElementById('status');
-  const results = document.getElementById('results');
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const DEFAULTS=[
+ {name:"Podcast cover",width:1200,height:630},
+ {name:"Square image",width:3000,height:3000}
+];
+let presets=loadPresets();
+let selectedFile=null;
+let previewUrl=null;
 
-  function say(message) { status.textContent = message; }
-
-  function makeResizedBlob(file, width, height, mode) {
-    return new Promise((resolve, reject) => {
-      const objectUrl = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, width, height);
-          const scale = mode === 'cover'
-            ? Math.max(width / img.naturalWidth, height / img.naturalHeight)
-            : Math.min(width / img.naturalWidth, height / img.naturalHeight);
-          const drawWidth = img.naturalWidth * scale;
-          const drawHeight = img.naturalHeight * scale;
-          const x = (width - drawWidth) / 2;
-          const y = (height - drawHeight) / 2;
-          ctx.drawImage(img, x, y, drawWidth, drawHeight);
-          canvas.toBlob(blob => {
-            URL.revokeObjectURL(objectUrl);
-            if (blob) resolve(blob); else reject(new Error('Could not create the resized image.'));
-          }, 'image/jpeg', 0.92);
-        } catch (error) {
-          URL.revokeObjectURL(objectUrl);
-          reject(error);
-        }
-      };
-      img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('The selected image could not be opened.')); };
-      img.src = objectUrl;
-    });
+function loadPresets(){
+ try{
+  const saved=JSON.parse(localStorage.getItem("imageResizerPresets")||"null");
+  if(Array.isArray(saved)&&saved.length) return saved;
+ }catch(e){}
+ return DEFAULTS.slice();
+}
+function savePresets(){localStorage.setItem("imageResizerPresets",JSON.stringify(presets));}
+function populatePresets(){
+ const select=$("presetSelect"); select.innerHTML="";
+ presets.forEach((p,i)=>{
+  const opt=document.createElement("option");opt.value=String(i);
+  opt.textContent=p.name+" ("+p.width+" × "+p.height+")";select.appendChild(opt);
+ });
+ if(!presets.length){presets=DEFAULTS.slice();savePresets();populatePresets();return;}
+ select.value="0";applyPreset(0);
+}
+function applyPreset(i){
+ const p=presets[Number(i)];if(!p)return;
+ $("widthInput").value=p.width;$("heightInput").value=p.height;
+}
+function setStatus(message,type){
+ const el=$("status");el.textContent=message;el.className="status "+type;
+}
+function clearResult(){$("result").innerHTML="";$("result").classList.add("hidden");}
+function validDimensions(w,h){
+ return Number.isInteger(w)&&Number.isInteger(h)&&w>0&&h>0&&w<=12000&&h<=12000;
+}
+function canvasBlob(canvas,type){
+ return new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error("The browser could not create the resized image.")),type,0.92));
+}
+async function resizeImage(file,width,height,fit){
+ if(!file.type.startsWith("image/")) throw new Error("Please choose an image file.");
+ const bitmap=await createImageBitmap(file);
+ const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
+ const ctx=canvas.getContext("2d");
+ ctx.fillStyle="#ffffff";ctx.fillRect(0,0,width,height);
+ if(fit==="stretch"){
+  ctx.drawImage(bitmap,0,0,width,height);
+ }else{
+  const scale=fit==="cover"?Math.max(width/bitmap.width,height/bitmap.height):Math.min(width/bitmap.width,height/bitmap.height);
+  const dw=bitmap.width*scale,dh=bitmap.height*scale;
+  ctx.drawImage(bitmap,(width-dw)/2,(height-dh)/2,dw,dh);
+ }
+ bitmap.close();
+ const type=(file.type==="image/png"||file.type==="image/webp")?file.type:"image/jpeg";
+ const blob=await canvasBlob(canvas,type);
+ return {blob,type,width,height};
+}
+function fileBaseName(name){return (name||"image").replace(/\.[^.]+$/,"").replace(/[^a-z0-9_-]+/gi,"-").replace(/^-+|-+$/g,"")||"image";}
+function downloadBlob(blob,name){
+ const url=URL.createObjectURL(blob);const a=document.createElement("a");
+ a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),30000);
+}
+async function uploadToCloudinary(blob,type,name){
+ const cloud=$("cloudName").value.trim(),preset=$("uploadPreset").value.trim();
+ if(!cloud||!preset)throw new Error("Enter your Cloudinary cloud name and unsigned upload preset name in Cloudinary settings.");
+ if(!/^[a-zA-Z0-9_-]+$/.test(cloud))throw new Error("Check the Cloudinary cloud name. It should contain only letters, numbers, underscores or hyphens.");
+ const endpoint="https://api.cloudinary.com/v1_1/"+encodeURIComponent(cloud)+"/image/upload";
+ const data=new FormData();
+ const ext=type==="image/png"?"png":type==="image/webp"?"webp":"jpg";
+ data.append("file",blob,name+"."+ext);
+ data.append("upload_preset",preset);
+ const response=await fetch(endpoint,{method:"POST",body:data});
+ let payload={};try{payload=await response.json();}catch(e){}
+ if(!response.ok){
+  const msg=payload.error&&payload.error.message?payload.error.message:"Cloudinary upload failed (HTTP "+response.status+").";
+  throw new Error(msg);
+ }
+ if(!payload.secure_url)throw new Error("Cloudinary did not return a secure image URL.");
+ return payload.secure_url;
+}
+$("fileInput").addEventListener("change",()=>{
+ selectedFile=$("fileInput").files&&$("fileInput").files[0]||null;clearResult();
+ if(previewUrl)URL.revokeObjectURL(previewUrl);
+ if(!selectedFile){$("fileInfo").textContent="No image selected yet.";$("preview").classList.add("hidden");return;}
+ $("fileInfo").textContent=selectedFile.name+" · "+Math.round(selectedFile.size/1024)+" KB";
+ previewUrl=URL.createObjectURL(selectedFile);$("preview").src=previewUrl;$("preview").classList.remove("hidden");
+});
+$("presetSelect").addEventListener("change",e=>applyPreset(e.target.value));
+$("processButton").addEventListener("click",async()=>{
+ clearResult();
+ if(!selectedFile){setStatus("Choose an image first.","err");return;}
+ const width=Number($("widthInput").value),height=Number($("heightInput").value);
+ if(!validDimensions(width,height)){setStatus("Enter a width and height between 1 and 12000 pixels.","err");return;}
+ const action=document.querySelector('input[name="action"]:checked').value;
+ const button=$("processButton");button.disabled=true;button.textContent="Working…";
+ setStatus("Resizing your image…","info");
+ try{
+  const out=await resizeImage(selectedFile,width,height,$("fitMode").value);
+  const name=fileBaseName(selectedFile.name)+"-"+width+"x"+height;
+  if(action==="download"){
+   downloadBlob(out.blob,name+(out.type==="image/png"?".png":out.type==="image/webp"?".webp":".jpg"));
+   setStatus("Your resized image is ready. Check your phone's Downloads folder.","ok");
+  }else{
+   setStatus("Image resized. Uploading to Cloudinary…","info");
+   const url=await uploadToCloudinary(out.blob,out.type,name);
+   const result=$("result");result.classList.remove("hidden");
+   const heading=document.createElement("p");heading.textContent="Cloudinary image link:";result.appendChild(heading);
+   const link=document.createElement("a");link.className="linkbox";link.href=url;link.target="_blank";link.rel="noopener";link.textContent=url;result.appendChild(link);
+   const copy=document.createElement("button");copy.type="button";copy.className="secondary";copy.textContent="Copy Cloudinary link";
+   copy.addEventListener("click",async()=>{
+    try{await navigator.clipboard.writeText(url);copy.textContent="Link copied";}catch(e){const t=document.createElement("textarea");t.value=url;result.appendChild(t);t.select();document.execCommand("copy");t.remove();copy.textContent="Link copied";}
+   });result.appendChild(copy);
+   const dl=document.createElement("button");dl.type="button";dl.className="secondary";dl.style.marginLeft="8px";dl.textContent="Download resized image";
+   dl.addEventListener("click",()=>downloadBlob(out.blob,name+(out.type==="image/png"?".png":out.type==="image/webp"?".webp":".jpg")));
+   result.appendChild(dl);
+   setStatus("Upload complete. This is the direct Cloudinary image delivery URL.","ok");
   }
-
-  async function upload(blob, filename) {
-    const data = new FormData();
-    data.append('file', blob, filename);
-    data.append('upload_preset', UPLOAD_PRESET);
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-      method: 'POST', body: data
-    });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error?.message || `Cloudinary upload failed (${response.status}).`);
-    return payload.secure_url;
-  }
-
-  async function showResult(containerId, heading, url) {
-    const container = document.getElementById(containerId);
-    container.replaceChildren();
-    const title = document.createElement('h3');
-    title.textContent = heading;
-    const link = document.createElement('a');
-    link.href = url;
-    link.textContent = 'Open uploaded image';
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    const urlText = document.createElement('p');
-    urlText.textContent = 'Image URL: ' + url;
-    const copyUrl = document.createElement('button');
-    copyUrl.type = 'button';
-    copyUrl.className = 'copy';
-    copyUrl.textContent = 'Copy image URL';
-    copyUrl.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(url); copyUrl.textContent = 'Image URL copied'; }
-      catch { urlText.textContent = 'Image URL (select and copy): ' + url; }
-    });
-    const embed = `<img src="${url}" alt="Podcast image">`;
-    const embedText = document.createElement('p');
-    embedText.textContent = 'HTML embed code: ' + embed;
-    const copyEmbed = document.createElement('button');
-    copyEmbed.type = 'button';
-    copyEmbed.className = 'copy';
-    copyEmbed.textContent = 'Copy HTML embed code';
-    copyEmbed.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(embed); copyEmbed.textContent = 'Embed code copied'; }
-      catch { embedText.textContent = 'HTML embed code (select and copy): ' + embed; }
-    });
-    container.append(title, link, urlText, copyUrl, embedText, copyEmbed);
-  }
-
-  button.addEventListener('click', async () => {
-    const file = fileInput.files && fileInput.files[0];
-    if (!file) { say('Please choose an image first.'); fileInput.focus(); return; }
-    if (!file.type.startsWith('image/')) { say('Please choose an image file.'); return; }
-    button.disabled = true;
-    results.hidden = true;
-    try {
-      say('Preparing the 1200 × 630 image…');
-      const wideBlob = await makeResizedBlob(file, 1200, 630, fitMode.value);
-      say('Uploading the 1200 × 630 image…');
-      const wideUrl = await upload(wideBlob, 'podcast-1200x630.jpg');
-      say('Preparing the 3000 × 3000 image…');
-      const squareBlob = await makeResizedBlob(file, 3000, 3000, fitMode.value);
-      say('Uploading the 3000 × 3000 image…');
-      const squareUrl = await upload(squareBlob, 'podcast-3000x3000.jpg');
-      await showResult('resultWide', '1200 × 630 image', wideUrl);
-      await showResult('resultSquare', '3000 × 3000 image', squareUrl);
-      results.hidden = false;
-      say('Both images were uploaded successfully. Copy the image URL or HTML embed code you need.');
-    } catch (error) {
-      say('Something went wrong: ' + error.message + ' Check your internet connection and that the podcast-images preset is set to Unsigned.');
-    } finally {
-      button.disabled = false;
-    }
+ }catch(err){setStatus(err.message||"Something went wrong. Please try again.","err");}
+ finally{button.disabled=false;button.textContent="Resize image";}
+});
+$("saveSettings").addEventListener("click",()=>{
+ localStorage.setItem("cloudinaryCloudName",$("cloudName").value.trim());
+ localStorage.setItem("cloudinaryUploadPreset",$("uploadPreset").value.trim());
+ setStatus("Cloudinary settings saved on this device.","ok");
+});
+$("cloudName").value=localStorage.getItem("cloudinaryCloudName")||"dsgy5389i";
+$("uploadPreset").value=localStorage.getItem("cloudinaryUploadPreset")||"Podcast images";
+$("managePresets").addEventListener("click",()=>{$("manageCard").classList.remove("hidden");renderPresetList();$("manageCard").scrollIntoView({behavior:"smooth"});});
+$("closeManage").addEventListener("click",()=>$("manageCard").classList.add("hidden"));
+function renderPresetList(){
+ const list=$("presetList");list.innerHTML="";
+ presets.forEach((p,i)=>{
+  const wrap=document.createElement("div");wrap.className="preset-row";
+  const label=document.createElement("span");label.style.flex="1";label.textContent=p.name+" — "+p.width+" × "+p.height;
+  const edit=document.createElement("button");edit.type="button";edit.className="secondary";edit.textContent="Edit";
+  edit.addEventListener("click",()=>{
+   $("presetName").value=p.name;$("newWidth").value=p.width;$("newHeight").value=p.height;
+   $("savePreset").textContent="Update preset";$("savePreset").dataset.editIndex=String(i);
   });
+  const del=document.createElement("button");del.type="button";del.className="danger";del.textContent="Delete";
+  del.addEventListener("click",()=>{
+   if(!confirm("Delete the preset "+p.name+"?"))return;
+   presets.splice(i,1);savePresets();populatePresets();renderPresetList();
+  });
+  wrap.append(label,edit,del);list.appendChild(wrap);
+ });
+}
+$("savePreset").addEventListener("click",()=>{
+ const name=$("presetName").value.trim(),width=Number($("newWidth").value),height=Number($("newHeight").value);
+ if(!name){alert("Enter a name for this preset.");return;}
+ if(!validDimensions(width,height)){alert("Enter a width and height between 1 and 12000 pixels.");return;}
+ const editIndex=$("savePreset").dataset.editIndex;
+ const item={name,width,height};
+ if(editIndex!==undefined){presets[Number(editIndex)]=item;delete $("savePreset").dataset.editIndex;$("savePreset").textContent="Save preset";}
+ else{
+  const existing=presets.findIndex(p=>p.name.toLowerCase()===name.toLowerCase());
+  if(existing>=0)presets[existing]=item;else presets.push(item);
+ }
+ savePresets();populatePresets();renderPresetList();$("presetName").value="";
+});
+populatePresets();
 })();
 </script>
 </body>
